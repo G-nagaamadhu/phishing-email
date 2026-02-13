@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PhishShield AI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root{
+    --accent:#00bfff;
+}
+
+/* Reset */
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    height:100vh;
+    font-family:'Segoe UI',sans-serif;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:#0a0a0a;
+    transition:0.4s;
+    position:relative;
+    overflow:hidden;
+}
+
+/* ========================= */
+/* DARK MODE - MOVING DOTS */
+/* ========================= */
+body::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+        radial-gradient(circle, rgba(0,255,150,0.4) 2px, transparent 3px);
+    background-size:55px 55px; /* decreased spacing more */
+    animation:moveDots 18s linear infinite; /* same speed */
+    z-index:0;
+    opacity:0.2; /* slightly softer overall */
+}
+
+@keyframes moveDots{
+    from{background-position:0 0;}
+    to{background-position:-55px -55px;}
+}
+
+body::after{
+    display:none;
+}
+
+/* ========================= */
+/* LIGHT MODE BACKGROUND */
+/* ========================= */
+body.light{
+    background:#e8eef5;
+}
+
+body.light::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+        repeating-linear-gradient(
+            45deg,
+            rgba(0,0,0,0.05),
+            rgba(0,0,0,0.05) 2px,
+            transparent 2px,
+            transparent 14px
+        );
+    animation:none;
+}
+
+body.light::after{
+    display:none;
+}
+
+/* Main Card */
+.card{
+    position:relative;
+    width:480px;
+    padding:35px;
+    border-radius:18px;
+    background:#111;
+    color:white;
+    text-align:center;
+    z-index:2;
+    border:1px solid var(--accent);
+    box-shadow:0 0 25px rgba(0,191,255,0.2);
+    transition:0.4s;
+}
+
+body.light .card{
+    background:white;
+    color:black;
+}
+
+/* Headings */
+h2{
+    margin-bottom:10px;
+    font-size:24px;
+    color:var(--accent);
+}
+
+p{
+    font-size:14px;
+    margin-bottom:20px;
+    opacity:0.8;
+}
+
+/* Textarea */
+textarea{
+    width:100%;
+    height:120px;
+    border-radius:12px;
+    border:1px solid var(--accent);
+    padding:14px;
+    font-size:14px;
+    resize:none;
+    outline:none;
+    background:#1a1a1a;
+    color:white;
+    transition:0.3s;
+}
+
+body.light textarea{
+    background:#f0f0f0;
+    color:black;
+}
+
+textarea:focus{
+    box-shadow:0 0 15px var(--accent);
+}
+
+/* Button */
+button{
+    width:100%;
+    margin-top:20px;
+    padding:14px;
+    font-size:16px;
+    font-weight:bold;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+    background:var(--accent);
+    color:#000;
+    transition:0.3s;
+}
+
+button:hover{
+    transform:scale(1.05);
+    box-shadow:0 0 20px var(--accent);
+}
+
+/* Result */
+.result{
+    margin-top:20px;
+    padding:15px;
+    border-radius:12px;
+    display:none;
+    animation:fadeIn 0.4s ease-in-out;
+}
+
+.phishing{
+    border:1px solid red;
+    color:red;
+}
+
+.safe{
+    border:1px solid var(--accent);
+    color:var(--accent);
+}
+
+@keyframes fadeIn{
+    from{opacity:0;transform:translateY(10px);}
+    to{opacity:1;transform:translateY(0);}
+}
+
+/* Risk Meter */
+.meter{
+    height:8px;
+    width:100%;
+    background:#222;
+    border-radius:10px;
+    margin-top:10px;
+    overflow:hidden;
+}
+
+.meter-fill{
+    height:100%;
+    width:0%;
+    background:var(--accent);
+    transition:width 1s ease;
+}
+
+/* Toggle */
+.toggle{
+    position:absolute;
+    top:20px;
+    right:20px;
+    padding:8px 14px;
+    background:#111;
+    color:white;
+    border-radius:20px;
+    cursor:pointer;
+    z-index:3;
+    border:1px solid var(--accent);
+}
+
+body.light .toggle{
+    background:white;
+    color:black;
+}
+</style>
+</head>
+
+<body>
+
+<div class="toggle" onclick="toggleMode()">Toggle Mode</div>
+
+<div class="card">
+    <h2>⚡ PhishShield AI</h2>
+    <p>AI Powered Phishing Email Detection</p>
+
+    <textarea id="email" placeholder="Paste suspicious email here..."></textarea>
+    <button onclick="check()">Scan Email</button>
+
+    <div id="resultBox" class="result">
+        <div id="resultText"></div>
+        <div class="meter">
+            <div class="meter-fill" id="meterFill"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleMode(){
+    document.body.classList.toggle("light");
+}
+
+function check(){
+    let email=document.getElementById("email").value;
+    let resultBox=document.getElementById("resultBox");
+    let resultText=document.getElementById("resultText");
+    let meterFill=document.getElementById("meterFill");
+
+    fetch("http://127.0.0.1:5000/predict",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({email:email})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        resultBox.style.display="block";
+        meterFill.style.width=data.risk_score+"%";
+
+        if(data.result==="Phishing"){
+            resultBox.className="result phishing";
+        }else{
+            resultBox.className="result safe";
+        }
+
+        resultText.innerHTML=
+        `<b>Result:</b> ${data.result}<br>
+         <b>Risk Score:</b> ${data.risk_score}%`;
+    })
+    .catch(()=>{
+        resultBox.style.display="block";
+        resultBox.className="result phishing";
+        resultText.innerHTML="⚠ Server not reachable";
+    });
+}
+</script>
+
+</body>
+</html>
